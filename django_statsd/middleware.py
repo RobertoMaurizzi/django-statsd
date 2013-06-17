@@ -45,9 +45,12 @@ class GraphiteRequestTimingMiddleware(object):
             ms = int((time.time() - request._start_time) * 1000)
             data = dict(module=request._view_module, name=request._view_name,
                         method=request.method)
-            statsd.timing('view.{module}.{name}.{method}'.format(**data), ms)
-            statsd.timing('view.{module}.{method}'.format(**data), ms)
-            statsd.timing('view.{method}'.format(**data), ms)
+            #statsd.timing('view.{module}.{name}.{method}'.format(**data), ms)
+            #statsd.timing('view.{module}.{method}'.format(**data), ms)
+            #statsd.timing('view.{method}'.format(**data), ms)
+            statsd.timing('view.%s.%s.%s'%(data['module'], data['name'], data['method']), ms)
+            statsd.timing('view.%s.%s'%(data['module'], data['name']), ms)
+            statsd.timing('view.%s'%(data['module'],), ms)
 
 
 class TastyPieRequestTimingMiddleware(GraphiteRequestTimingMiddleware):
