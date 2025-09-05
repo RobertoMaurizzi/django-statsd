@@ -1,0 +1,85 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "django-statsd-mozilla"
+version = "0.4.0"
+description = "Django interface with statsd"
+readme = "README.rst"
+license = { text = "BSD" }
+authors = [
+    { name = "Andy McKay", email = "andym@mozilla.com" },
+]
+classifiers = [
+    "Intended Audience :: Developers",
+    "Natural Language :: English",
+    "Operating System :: OS Independent",
+    "Framework :: Django",
+    "Framework :: Django :: 3.2",
+    "Framework :: Django :: 4.0",
+    "Framework :: Django :: 4.1",
+    "Framework :: Django :: 4.2",
+    "Framework :: Django :: 5.0",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+dependencies = [
+    "statsd >= 3.2.1, < 4.0",
+]
+requires-python = ">=3.8"
+
+[project.optional-dependencies]
+dev = [
+    "mock",
+    "pytest>=7.0",
+    "pytest-django>=4.0",
+    "pytest-cov>=4.0",
+    "tox>=4.0",
+    "datadog",
+    "metlog-py",
+]
+test = [
+    "mock",
+    "pytest>=7.0",
+    "pytest-django>=4.0",
+    "pytest-cov>=4.0",
+    "tox>=4.0",
+]
+zabbix = [
+    "py-zabbix",
+]
+prometheus = [
+    "prometheus-client",
+]
+
+[project.entry-points."nose.plugins.0.10"]
+django_statsd = "django_statsd:NoseStatsd"
+
+[project.urls]
+Homepage = "https://github.com/django-statsd/django-statsd"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["django_statsd*"]
+
+[tool.setuptools.package-data]
+django_statsd = ["static/*", "templates/*"]
+
+[tool.pytest.ini_options]
+addopts = "--tb=short -v"
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+DJANGO_SETTINGS_MODULE = "tests.conftest"
+django_find_project = true
+
+[tool.coverage.run]
+source = ["django_statsd"]
+omit = ["*/tests/*", "*/migrations/*"]

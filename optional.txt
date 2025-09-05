@@ -1,2 +1,0 @@
-metlog-py
-datadog
