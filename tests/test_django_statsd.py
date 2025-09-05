@@ -3,15 +3,10 @@ import logging.config
 import sys
 import unittest
 from collections import deque
+from unittest import skip
+from unittest import TestCase as BaseTestCase
 
 from django.conf import settings
-from nose.exc import SkipTest
-from nose import tools as nose_tools
-
-try:
-    from django.urls import reverse
-except ImportError:
-    from django.core.urlresolvers import reverse
 from django import VERSION as DJANGO_VERSION
 from django.http import HttpResponse, HttpResponseForbidden
 from django.test import TestCase
@@ -19,7 +14,6 @@ from django.test.client import RequestFactory
 from django.utils.http import urlencode
 
 import mock
-from nose.tools import eq_
 from django_statsd.clients import get_client, statsd
 from django_statsd.patches import utils
 from django_statsd.patches.db import (
@@ -80,7 +74,7 @@ class TestIncr(TestCase):
     def test_graphite_response(self, incr):
         gmw = middleware.GraphiteMiddleware()
         gmw.process_response(self.req, self.res)
-        assert incr.called
+        self.assertTrue(incr.called)
 
     def test_graphite_response_authenticated(self, incr):
         self.req.user = mock.Mock()
@@ -90,12 +84,12 @@ class TestIncr(TestCase):
             self.req.user.is_authenticated = True
         gmw = middleware.GraphiteMiddleware()
         gmw.process_response(self.req, self.res)
-        eq_(incr.call_count, 2)
+        self.assertEqual(incr.call_count, 2)
 
     def test_graphite_exception(self, incr):
         gmw = middleware.GraphiteMiddleware()
         gmw.process_exception(self.req, None)
-        assert incr.called
+        self.assertTrue(incr.called)
 
     def test_graphite_exception_authenticated(self, incr):
         self.req.user = mock.Mock()
@@ -105,7 +99,7 @@ class TestIncr(TestCase):
             self.req.user.is_authenticated = True
         gmw = middleware.GraphiteMiddleware()
         gmw.process_exception(self.req, None)
-        eq_(incr.call_count, 2)
+        self.assertEqual(incr.call_count, 2)
 
 
 @mock.patch.object(middleware.statsd, 'timing')
@@ -120,24 +114,24 @@ class TestTiming(unittest.TestCase):
         gmw = middleware.GraphiteRequestTimingMiddleware()
         gmw.process_view(self.req, func, tuple(), dict())
         gmw.process_response(self.req, self.res)
-        eq_(timing.call_count, 3)
+        self.assertEqual(timing.call_count, 3)
         names = ['view.%s.%s.GET' % (func.__module__, func.__name__),
                  'view.%s.GET' % func.__module__,
                  'view.GET']
         for expected, (args, kwargs) in zip(names, timing.call_args_list):
-            eq_(expected, args[0])
+            self.assertEqual(expected, args[0])
 
     def test_request_timing_exception(self, timing):
         func = lambda x: x
         gmw = middleware.GraphiteRequestTimingMiddleware()
         gmw.process_view(self.req, func, tuple(), dict())
         gmw.process_exception(self.req, self.res)
-        eq_(timing.call_count, 3)
+        self.assertEqual(timing.call_count, 3)
         names = ['view.%s.%s.GET' % (func.__module__, func.__name__),
                  'view.%s.GET' % func.__module__,
                  'view.GET']
         for expected, (args, kwargs) in zip(names, timing.call_args_list):
-            eq_(expected, args[0])
+            self.assertEqual(expected, args[0])
 
     def test_request_timing_tastypie(self, timing):
         func = lambda x: x
@@ -147,49 +141,49 @@ class TestTiming(unittest.TestCase):
             'resource_name': 'my_resource_name'
         })
         gmw.process_response(self.req, self.res)
-        eq_(timing.call_count, 3)
+        self.assertEqual(timing.call_count, 3)
         names = ['view.my_api_name.my_resource_name.GET',
                  'view.my_api_name.GET',
                  'view.GET']
         for expected, (args, kwargs) in zip(names, timing.call_args_list):
-            eq_(expected, args[0])
+            self.assertEqual(expected, args[0])
 
     def test_request_timing_tastypie_fallback(self, timing):
         func = lambda x: x
         gmw = middleware.TastyPieRequestTimingMiddleware()
         gmw.process_view(self.req, func, tuple(), dict())
         gmw.process_response(self.req, self.res)
-        eq_(timing.call_count, 3)
+        self.assertEqual(timing.call_count, 3)
         names = ['view.%s.%s.GET' % (func.__module__, func.__name__),
                  'view.%s.GET' % func.__module__,
                  'view.GET']
         for expected, (args, kwargs) in zip(names, timing.call_args_list):
-            eq_(expected, args[0])
+            self.assertEqual(expected, args[0])
 
 
 class TestClient(unittest.TestCase):
 
     @mock.patch.object(settings, 'STATSD_CLIENT', 'statsd.client')
     def test_normal(self):
-        eq_(get_client().__module__, 'statsd.client')
+        self.assertEqual(get_client().__module__, 'statsd.client')
 
     @mock.patch.object(settings, 'STATSD_CLIENT',
                        'django_statsd.clients.null')
     def test_null(self):
-        eq_(get_client().__module__, 'django_statsd.clients.null')
+        self.assertEqual(get_client().__module__, 'django_statsd.clients.null')
 
     @mock.patch.object(settings, 'STATSD_CLIENT',
                        'django_statsd.clients.toolbar')
     def test_toolbar(self):
-        eq_(get_client().__module__, 'django_statsd.clients.toolbar')
+        self.assertEqual(get_client().__module__, 'django_statsd.clients.toolbar')
 
     @mock.patch.object(settings, 'STATSD_CLIENT',
                        'django_statsd.clients.toolbar')
     def test_toolbar_send(self):
         client = get_client()
-        eq_(client.cache, {})
+        self.assertEqual(client.cache, {})
         client.incr('testing')
-        eq_(client.cache, {'testing|count': [[1, 1]]})
+        self.assertEqual(client.cache, {'testing|count': [[1, 1]]})
 
     @mock.patch.object(settings, 'STATSD_CLIENT',
                        'django_statsd.clients.datadogpy')
@@ -197,16 +191,16 @@ class TestClient(unittest.TestCase):
         client = get_client()
         client.socket = FakeSocket()
 
-        eq_(list(client.socket.payloads), [])
+        self.assertEqual(list(client.socket.payloads), [])
 
         client.incr('testing')
-        eq_(client.socket.recv(), 'testing:1|c')
+        self.assertEqual(client.socket.recv(), 'testing:1|c')
 
         client.decr('testing')
-        eq_(client.socket.recv(), 'testing:-1|c')
+        self.assertEqual(client.socket.recv(), 'testing:-1|c')
 
         client.timing('testing', 8)
-        eq_(client.socket.recv(), 'testing:8|ms')
+        self.assertEqual(client.socket.recv(), 'testing:8|ms')
 
 
 class TestMetlogClient(TestCase):
@@ -216,13 +210,13 @@ class TestMetlogClient(TestCase):
             from metlog.config import client_from_dict_config
             return client_from_dict_config
         except ImportError:
-            raise SkipTest("Metlog is not installed")
+            self.skipTest("Metlog is not installed")
 
-    @nose_tools.raises(AttributeError)
     def test_no_metlog(self):
-        with self.settings(STATSD_PREFIX='moz_metlog',
-                           STATSD_CLIENT='django_statsd.clients.moz_metlog'):
-            get_client()
+        with self.assertRaises(AttributeError):
+            with self.settings(STATSD_PREFIX='moz_metlog',
+                               STATSD_CLIENT='django_statsd.clients.moz_metlog'):
+                get_client()
 
     def _create_client(self):
         client_from_dict_config = self.check_metlog()
@@ -245,7 +239,7 @@ class TestMetlogClient(TestCase):
                            STATSD_PREFIX='moz_metlog',
                            STATSD_CLIENT='django_statsd.clients.moz_metlog'):
             client = get_client()
-            eq_(client.__module__, 'django_statsd.clients.moz_metlog')
+            self.assertEqual(client.__module__, 'django_statsd.clients.moz_metlog')
 
     def test_metlog_incr(self):
         metlog = self._create_client()
@@ -253,16 +247,16 @@ class TestMetlogClient(TestCase):
                            STATSD_PREFIX='moz_metlog',
                            STATSD_CLIENT='django_statsd.clients.moz_metlog'):
             client = get_client()
-            eq_(len(client.metlog.sender.msgs), 0)
+            self.assertEqual(len(client.metlog.sender.msgs), 0)
             client.incr('testing')
-            eq_(len(client.metlog.sender.msgs), 1)
+            self.assertEqual(len(client.metlog.sender.msgs), 1)
 
             msg = json.loads(client.metlog.sender.msgs[0])
-            eq_(msg['severity'], 6)
-            eq_(msg['payload'], '1')
-            eq_(msg['fields']['rate'], 1)
-            eq_(msg['fields']['name'], 'moz_metlog.testing')
-            eq_(msg['type'], 'counter')
+            self.assertEqual(msg['severity'], 6)
+            self.assertEqual(msg['payload'], '1')
+            self.assertEqual(msg['fields']['rate'], 1)
+            self.assertEqual(msg['fields']['name'], 'moz_metlog.testing')
+            self.assertEqual(msg['type'], 'counter')
 
     def test_metlog_decr(self):
         metlog = self._create_client()
@@ -270,16 +264,16 @@ class TestMetlogClient(TestCase):
                            STATSD_PREFIX='moz_metlog',
                            STATSD_CLIENT='django_statsd.clients.moz_metlog'):
             client = get_client()
-            eq_(len(client.metlog.sender.msgs), 0)
+            self.assertEqual(len(client.metlog.sender.msgs), 0)
             client.decr('testing')
-            eq_(len(client.metlog.sender.msgs), 1)
+            self.assertEqual(len(client.metlog.sender.msgs), 1)
 
             msg = json.loads(client.metlog.sender.msgs[0])
-            eq_(msg['severity'], 6)
-            eq_(msg['payload'], '-1')
-            eq_(msg['fields']['rate'], 1)
-            eq_(msg['fields']['name'], 'moz_metlog.testing')
-            eq_(msg['type'], 'counter')
+            self.assertEqual(msg['severity'], 6)
+            self.assertEqual(msg['payload'], '-1')
+            self.assertEqual(msg['fields']['rate'], 1)
+            self.assertEqual(msg['fields']['name'], 'moz_metlog.testing')
+            self.assertEqual(msg['type'], 'counter')
 
     def test_metlog_timing(self):
         metlog = self._create_client()
@@ -287,25 +281,25 @@ class TestMetlogClient(TestCase):
                            STATSD_PREFIX='moz_metlog',
                            STATSD_CLIENT='django_statsd.clients.moz_metlog'):
             client = get_client()
-            eq_(len(client.metlog.sender.msgs), 0)
-            client.timing('testing', 512, rate=2)
-            eq_(len(client.metlog.sender.msgs), 1)
+            self.assertEqual(len(client.metlog.sender.msgs), 0)
+            client.timing('testing', 8)
+            self.assertEqual(len(client.metlog.sender.msgs), 1)
 
             msg = json.loads(client.metlog.sender.msgs[0])
-            eq_(msg['severity'], 6)
-            eq_(msg['payload'], '512')
-            eq_(msg['fields']['rate'], 2)
-            eq_(msg['fields']['name'], 'moz_metlog.testing')
-            eq_(msg['type'], 'timer')
+            self.assertEqual(msg['severity'], 6)
+            self.assertEqual(msg['payload'], '8')
+            self.assertEqual(msg['fields']['rate'], 1)
+            self.assertEqual(msg['fields']['name'], 'moz_metlog.testing')
+            self.assertEqual(msg['type'], 'timer')
 
-    @nose_tools.raises(AttributeError)
     def test_metlog_no_prefixes(self):
         metlog = self._create_client()
 
         with self.settings(METLOG=metlog,
                            STATSD_CLIENT='django_statsd.clients.moz_metlog'):
-            client = get_client()
-            client.incr('foo', 2)
+            with self.assertRaises(AttributeError):
+                client = get_client()
+                client.incr('foo', 2)
 
     def test_metlog_prefixes(self):
         metlog = self._create_client()
@@ -314,34 +308,34 @@ class TestMetlogClient(TestCase):
                            STATSD_PREFIX='some_prefix',
                            STATSD_CLIENT='django_statsd.clients.moz_metlog'):
             client = get_client()
-            eq_(len(client.metlog.sender.msgs), 0)
+            self.assertEqual(len(client.metlog.sender.msgs), 0)
 
             client.timing('testing', 512, rate=2)
             client.incr('foo', 2)
             client.decr('bar', 5)
 
-            eq_(len(client.metlog.sender.msgs), 3)
+            self.assertEqual(len(client.metlog.sender.msgs), 3)
 
             msg = json.loads(client.metlog.sender.msgs[0])
-            eq_(msg['severity'], 6)
-            eq_(msg['payload'], '512')
-            eq_(msg['fields']['rate'], 2)
-            eq_(msg['fields']['name'], 'some_prefix.testing')
-            eq_(msg['type'], 'timer')
+            self.assertEqual(msg['severity'], 6)
+            self.assertEqual(msg['payload'], '512')
+            self.assertEqual(msg['fields']['rate'], 2)
+            self.assertEqual(msg['fields']['name'], 'some_prefix.testing')
+            self.assertEqual(msg['type'], 'timer')
 
             msg = json.loads(client.metlog.sender.msgs[1])
-            eq_(msg['severity'], 6)
-            eq_(msg['payload'], '2')
-            eq_(msg['fields']['rate'], 1)
-            eq_(msg['fields']['name'], 'some_prefix.foo')
-            eq_(msg['type'], 'counter')
+            self.assertEqual(msg['severity'], 6)
+            self.assertEqual(msg['payload'], '2')
+            self.assertEqual(msg['fields']['rate'], 1)
+            self.assertEqual(msg['fields']['name'], 'some_prefix.foo')
+            self.assertEqual(msg['type'], 'counter')
 
             msg = json.loads(client.metlog.sender.msgs[2])
-            eq_(msg['severity'], 6)
-            eq_(msg['payload'], '-5')
-            eq_(msg['fields']['rate'], 1)
-            eq_(msg['fields']['name'], 'some_prefix.bar')
-            eq_(msg['type'], 'counter')
+            self.assertEqual(msg['severity'], 6)
+            self.assertEqual(msg['payload'], '-5')
+            self.assertEqual(msg['fields']['rate'], 1)
+            self.assertEqual(msg['fields']['name'], 'some_prefix.bar')
+            self.assertEqual(msg['type'], 'counter')
 
 
 def patch_middleware(klass):
@@ -374,15 +368,15 @@ class TestRecord(TestCase):
 
     def test_no_client(self):
         response = self.client.get(self.url)
-        assert response.status_code == 400
+        self.assertEqual(response.status_code, 400)
 
     def test_no_valid_client(self):
         response = self.client.get(self.url, {'client': 'no'})
-        assert response.status_code == 400
+        self.assertEqual(response.status_code, 400)
 
     def test_boomerang_almost(self):
         response = self.client.get(self.url, {'client': 'boomerang'})
-        assert response.status_code == 400
+        self.assertEqual(response.status_code, 400)
 
     def test_boomerang_minimum(self):
         content = self.client.get(
@@ -390,61 +384,61 @@ class TestRecord(TestCase):
                 'client': 'boomerang',
                 'nt_nav_st': 1,
             }).content.decode()
-        assert content == 'recorded'
+        self.assertEqual(content, 'recorded')
 
     @mock.patch('django_statsd.views.process_key')
     def test_boomerang_something(self, process_key):
         content = self.client.get(self.url, self.good).content.decode()
-        assert content == 'recorded'
-        assert process_key.called
+        self.assertEqual(content, 'recorded')
+        self.assertTrue(process_key.called)
 
     def test_boomerang_post(self):
-        assert self.client.post(self.url + '?' + urlencode(self.good), self.good).status_code == 405
+        self.assertEqual(self.client.post(self.url + '?' + urlencode(self.good), self.good).status_code, 405)
 
     def test_good_guard(self):
         settings.STATSD_RECORD_GUARD = lambda r: None
         response = self.client.get(self.url, self.good)
-        assert response.status_code == 200
+        self.assertEqual(response.status_code, 200)
 
     def test_bad_guard(self):
         settings.STATSD_RECORD_GUARD = lambda r: HttpResponseForbidden()
         response = self.client.get(self.url, self.good)
-        assert response.status_code == 403
+        self.assertEqual(response.status_code, 403)
 
     def test_stick_get(self):
-        assert self.client.get(self.url, self.stick).status_code == 405
+        self.assertEqual(self.client.get(self.url, self.stick).status_code, 405)
 
     @mock.patch('django_statsd.views.process_key')
     def test_stick(self, process_key):
-        assert self.client.post(self.url, self.stick).status_code == 200
-        assert process_key.called
+        self.assertEqual(self.client.post(self.url, self.stick).status_code, 200)
+        self.assertTrue(process_key.called)
 
     def test_stick_start(self):
         data = self.stick.copy()
         del data['window.performance.timing.navigationStart']
-        assert self.client.post(self.url, data).status_code == 400
+        self.assertEqual(self.client.post(self.url, data).status_code, 400)
 
     @mock.patch('django_statsd.views.process_key')
     def test_stick_missing(self, process_key):
         data = self.stick.copy()
         del data['window.performance.timing.domInteractive']
-        assert self.client.post(self.url, data).status_code == 200
-        assert process_key.called
+        self.assertEqual(self.client.post(self.url, data).status_code, 200)
+        self.assertTrue(process_key.called)
 
     def test_stick_garbage(self):
         data = self.stick.copy()
         data['window.performance.timing.domInteractive'] = '<alert>'
-        assert self.client.post(self.url, data).status_code == 400
+        self.assertEqual(self.client.post(self.url, data).status_code, 400)
 
     def test_stick_some_garbage(self):
         data = self.stick.copy()
         data['window.performance.navigation.redirectCount'] = '<alert>'
-        assert self.client.post(self.url, data).status_code == 400
+        self.assertEqual(self.client.post(self.url, data).status_code, 400)
 
     def test_stick_more_garbage(self):
         data = self.stick.copy()
         data['window.performance.navigation.type'] = '<alert>'
-        assert self.client.post(self.url, data).status_code == 400
+        self.assertEqual(self.client.post(self.url, data).status_code, 400)
 
 
 @mock.patch.object(middleware.statsd, 'incr')
@@ -462,11 +456,11 @@ class TestErrorLog(TestCase):
 
     def test_emit(self, incr):
         self.log.error('blargh!', exc_info=self.division_error())
-        assert incr.call_args[0][0] == 'error.zerodivisionerror'
+        self.assertEqual(incr.call_args[0][0], 'error.zerodivisionerror')
 
     def test_not_emit(self, incr):
         self.log.error('blargh!')
-        assert not incr.called
+        self.assertFalse(incr.called)
 
 
 class TestPatchMethod(TestCase):
