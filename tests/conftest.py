@@ -3,33 +3,8 @@ import django
 from django.conf import settings
 
 
+# Make sure Django is configured before any tests run
 def pytest_configure():
-    if not settings.configured:
-        settings.configure(
-            DEBUG_PROPAGATE_EXCEPTIONS=True,
-            DATABASES={
-                "default": {"ENGINE": "django.db.backends.sqlite3", "NAME": ":memory:"}
-            },
-            SITE_ID=1,
-            SECRET_KEY="not very secret in tests",
-            ROOT_URLCONF="django_statsd.urls",
-            INSTALLED_APPS=(
-                "django.contrib.auth",
-                "django.contrib.contenttypes",
-                "django.contrib.sessions",
-                "django.contrib.sites",
-                "django.contrib.staticfiles",
-                "django_statsd",
-                "tests",
-            ),
-            STATSD_CLIENT="django_statsd.clients.null",
-            STATSD_PREFIX=None,
-            METLOG=None,
-        )
-
-    try:
-        django.setup()
-        if not hasattr(django, "setup"):
-            django.setup()
-    except AttributeError:
-        pass
+    # Settings are already configured via DJANGO_SETTINGS_MODULE
+    # But we can do additional configuration here if needed
+    pass

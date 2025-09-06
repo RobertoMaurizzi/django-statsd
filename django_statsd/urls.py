@@ -1,7 +1,7 @@
-from django.conf.urls import url
+from django.urls import path
 
 import django_statsd.views
 
 urlpatterns = [
-    url('^record$', django_statsd.views.record, name='django_statsd.record'),
+    path('record', django_statsd.views.record, name='django_statsd.record'),
 ]

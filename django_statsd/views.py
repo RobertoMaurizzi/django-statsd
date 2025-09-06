@@ -6,6 +6,12 @@ from django.views.decorators.http import require_http_methods
 
 from django_statsd.clients import statsd
 
+# Handle the collections.Callable deprecation
+try:
+    callable_type = collections.abc.Callable
+except AttributeError:
+    callable_type = collections.Callable
+
 
 boomerang = {
     'window.performance.navigation.redirectCount': 'nt_red_cnt',
@@ -157,7 +163,7 @@ def record(request):
 
     guard = getattr(settings, 'STATSD_RECORD_GUARD', None)
     if guard:
-        if not isinstance(guard, collections.Callable):
+        if not isinstance(guard, callable_type):
             raise ValueError('STATSD_RECORD_GUARD must be callable')
         result = guard(request)
         if result:

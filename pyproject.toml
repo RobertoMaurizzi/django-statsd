@@ -77,7 +77,7 @@ testpaths = ["tests"]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
-DJANGO_SETTINGS_MODULE = "tests.conftest"
+DJANGO_SETTINGS_MODULE = "tests.test_settings"
 django_find_project = true
 
 [tool.coverage.run]
